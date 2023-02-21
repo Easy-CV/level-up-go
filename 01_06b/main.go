@@ -17,7 +17,23 @@ const path = "users.json"
 // getBiggestMarket takes in the slice of users and
 // returns the biggest market.
 func getBiggestMarket(users []User) (string, int) {
-	panic("NOT IMPLEMENTED")
+	countryUsers := make(map[string]int)
+
+	for _, user := range users{
+		countryUsers[user.Country]++
+	}
+
+	var maxUserCountryAmount int
+	var biggestUsersCountry string
+
+	for country, amount := range countryUsers {
+		if amount > maxUserCountryAmount {
+			maxUserCountryAmount = amount
+			biggestUsersCountry = country
+		}
+	}
+
+	return biggestUsersCountry, maxUserCountryAmount
 }
 
 func main() {
