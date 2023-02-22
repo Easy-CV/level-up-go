@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-//the amount of bidders we have at our auction
+// the amount of bidders we have at our auction
 const bidderCount = 10
 
 // initial wallet value for all bidders
@@ -30,16 +30,37 @@ type bid struct {
 
 // auctioneer receives bids and announces winners
 type auctioneer struct {
-	bidders map[string]*bidder
+	bidders      map[string]*bidder
+	newBidSignal chan struct{}
 }
 
 // runAuction and manages the auction for all the items to be sold
 // Change the signature of this function as required
-func (a *auctioneer) runAuction() {
+func (a *auctioneer) runAuction(bidChannel <-chan bid, openBid chan struct{}) {
 	for _, item := range items {
 		log.Printf("Opening bids for %s!\n", item)
-		panic("NOT IMPLEMENTED YET")
+		a.openBid(openBid)
+		a.getWinner(bidChannel)
 	}
+}
+
+func (a *auctioneer) openBid(openSignal chan struct{}) {
+	for range a.bidders {
+		openSignal <- struct{}{}
+	}
+}
+
+func (a *auctioneer) getWinner(bidChannel <-chan bid) {
+	maxBid := bid{}
+	for range a.bidders {
+		newBid := <-bidChannel
+		fmt.Printf("%s is offering %d\n", newBid.bidderID, newBid.amount)
+		if newBid.amount > maxBid.amount {
+			maxBid = newBid
+		}
+	}
+
+	a.bidders[maxBid.bidderID].payBid(maxBid.amount)
 }
 
 // bidder is a type that holds the bidder id and wallet
@@ -50,19 +71,30 @@ type bidder struct {
 
 // placeBid generates a random amount and places it on the bids channels
 // Change the signature of this function as required
-func (b *bidder) placeBid() {
-	panic("NOT IMPLEMENTED YET")
+func (b *bidder) placeBid(bidChannel chan<- bid, newBidSignal <-chan struct{}) {
+	newBid := bid{
+		bidderID: b.id,
+	}
+
+	for range items {
+		<-newBidSignal
+		newBid.amount = getRandomAmount(b.wallet)
+		bidChannel <- newBid
+	}
 }
 
 // payBid subtracts the bid amount from the wallet of the auction winner
 func (b *bidder) payBid(amount int) {
 	b.wallet -= amount
+	fmt.Printf("%s is paying bid %d, new amount %d\n", b.id, amount, b.wallet)
 }
 
 func main() {
 	rand.Seed(time.Now().UnixNano())
 	log.Println("Welcome to the LinkedIn Learning auction.")
 	bidders := make(map[string]*bidder, bidderCount)
+	bidChannel := make(chan bid)
+	newBidSignal := make(chan struct{})
 	for i := 0; i < bidderCount; i++ {
 		id := fmt.Sprint("Bidder ", i)
 		b := bidder{
@@ -70,12 +102,13 @@ func main() {
 			wallet: walletAmount,
 		}
 		bidders[id] = &b
-		go b.placeBid()
+		go b.placeBid(bidChannel, newBidSignal)
 	}
 	a := auctioneer{
-		bidders: bidders,
+		bidders:      bidders,
+		newBidSignal: newBidSignal,
 	}
-	a.runAuction()
+	a.runAuction(bidChannel, newBidSignal)
 	log.Println("The LinkedIn Learning auction has finished!")
 }
 
