@@ -3,7 +3,13 @@ package main
 import (
 	"flag"
 	"log"
+	"sync"
 )
+
+type chanObject struct {
+	id      int
+	message string
+}
 
 var messages = []string{
 	"Hello!",
@@ -15,7 +21,24 @@ var messages = []string{
 
 // repeat concurrently prints out the given message n times
 func repeat(n int, message string) {
-	panic("NOT IMPLEMENTED")
+	var wg sync.WaitGroup
+	ch := make(chan chanObject)
+
+	wg.Add(n)
+
+	for i := 0; i < n; i++ {
+		go repeatConcurrently(ch, &wg)
+		ch <- chanObject{id: i, message: message}
+	}
+
+	wg.Wait()
+	close(ch)
+}
+
+func repeatConcurrently(ch chan chanObject, wg *sync.WaitGroup) {
+	m := <-ch
+	log.Printf("[G%d]:%s\n", m.id, m.message)
+	wg.Done()
 }
 
 func main() {
