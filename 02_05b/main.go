@@ -23,7 +23,7 @@ type coffeeShop struct {
 
 // registerOrder ensures that the order made by the baristas is counted
 func (p *coffeeShop) registerOrder() {
-	p.orderLock.Lock()
+	p.orderLock.Lock() // using mutex.lock to avoid raise conditions
 	defer p.orderLock.Unlock()
 
 	p.orderCount++
